@@ -11,6 +11,34 @@
 
 ---
 
+## Attack Screenshots
+
+> Real attack output from the lab environment — Kali Linux terminal, BloodHound CE, Impacket, and Mimikatz captured during a simulated red team campaign against `corp.local`. Full analysis in [`docs/attack-findings.md`](docs/attack-findings.md).
+
+### 1 · Phase 1 — Nmap Recon Scan on DC01
+![Phase 1 — Nmap Recon](docs/screenshots/screenshot1_nmap_recon.png)
+*Nmap `-sV -sC` scan against DC01 (192.168.56.10). Key findings: LDAP port 389 open, Kerberos port 88 open, SMB message signing enabled but **NOT REQUIRED** (critical — enables SMB Relay attacks), OS identified as Windows Server 2019 Standard 17763, domain FQDN `DC01.corp.local` leaked without credentials. MITRE: T1046, T1595.*
+
+### 2 · Phase 2 — AS-REP Roasting → Hash Capture & Crack
+![Phase 2 — AS-REP Roasting](docs/screenshots/screenshot2_asrep_roasting.png)
+*Impacket `GetNPUsers.py` targeting 50 domain accounts with zero credentials. Two accounts (`jdoe`, `svc-monitor`) had `UF_DONT_REQUIRE_PREAUTH` set — AS-REP hashes captured silently (no failed login events). Hashcat cracked both hashes against `rockyou.txt` in **27 seconds**: `jdoe → Summer2024!` and `svc-monitor → Monitor@2023`. MITRE: T1558.004.*
+
+### 3 · Phase 3 — BloodHound Attack Path to Domain Admin
+![Phase 3 — BloodHound Attack Path](docs/screenshots/screenshot3_bloodhound_path.png)
+*BloodHound CE attack path graph after SharpHound `All` collection on `corp.local`. Shortest path from compromised `jdoe` to Domain Admin: `jdoe → HasSession → WS01$ → AdminTo → adm-user → MemberOf → Domain Admins → DCSync → DC01`. **4 hops, CRITICAL severity** — full domain compromise achievable from a single low-privilege account. MITRE: T1087.002, T1484.*
+
+### 4 · Phase 7 — Mimikatz LSASS Dump (WDigest Plaintext)
+![Phase 7 — Mimikatz LSASS Dump](docs/screenshots/screenshot4_mimikatz_dump.png)
+*Mimikatz 2.2.0 `sekurlsa::logonpasswords` on DC01 after Pass-the-Hash lateral movement. WDigest caching enabled — **plaintext passwords stored in LSASS memory**. `adm-user → Admin@2024!` (NTLM: `e19ccf75...`) and `jsmith → Password123!` both extracted. 4 domain accounts compromised. NTLM hashes usable for PtH without cracking. MITRE: T1003.001.*
+
+### 5 · Full Campaign — Attack Timeline (23 Minutes to Domain Compromise)
+![Attack Timeline](docs/screenshots/screenshot5_attack_timeline.png)
+*Severity-scored timeline of all 8 attack events during the `corp.local` red team campaign. Campaign progressed from a severity-2 Nmap scan at 07:22 UTC to dual severity-10 events (Golden Ticket + LSASS dump) at 07:41–07:45 UTC. Total time from zero credentials to full domain compromise: **23 minutes**.*
+
+> 📄 **Full professional findings report with CVSS scores, MITRE mappings, and remediation:** [`docs/attack-findings.md`](docs/attack-findings.md)
+
+---
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -49,6 +77,7 @@ The engagement follows the **8-phase red team kill chain**:
 | Lab Environment | Windows Server 2019 + Kali Linux |
 | Domain | `corp.local` |
 | MITRE ATT&CK Version | v14 |
+| Findings Documented | 4 (2 Critical, 1 High, 1 Medium) |
 
 ---
 
@@ -197,6 +226,14 @@ active-directory-penetration-test/
 │   └── README.md           # AMSI bypass, log clearing, LOLBins
 ├── 09-reporting/
 │   └── README.md           # Report structure, severity ratings, finding template
+├── docs/
+│   ├── attack-findings.md  # 🔴 Professional pentest report (4 findings, CVSS, remediation)
+│   └── screenshots/        # Attack evidence screenshots
+│       ├── screenshot1_nmap_recon.png
+│       ├── screenshot2_asrep_roasting.png
+│       ├── screenshot3_bloodhound_path.png
+│       ├── screenshot4_mimikatz_dump.png
+│       └── screenshot5_attack_timeline.png
 ├── tools/
 │   └── README.md           # All tool installation and quick-start commands
 ├── lab-setup/
@@ -209,9 +246,9 @@ active-directory-penetration-test/
 
 ## Author
 
-**Chandra Sekhar Chakraborty**  
-Cybersecurity Analyst | Red Team Enthusiast | SOC Analyst (Aspiring)  
-📍 West Bengal, India  
+**Chandra Sekhar Chakraborty**
+Cybersecurity Analyst | Red Team Enthusiast | SOC Analyst (Aspiring)
+📍 West Bengal, India
 🔗 [GitHub](https://github.com/ChandraVerse)
 
 ---
