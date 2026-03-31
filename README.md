@@ -1,101 +1,223 @@
-# 🛡️ Active Directory Penetration Testing
+# Active Directory Penetration Testing
 
-> A comprehensive, hands-on lab guide and toolkit for performing Active Directory (AD) penetration testing — from reconnaissance to full domain compromise.
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Platform](https://img.shields.io/badge/Platform-Windows%20Server%202019%2F2022-0078D4?logo=windows)
+![ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK%20v14-red)
+![Language](https://img.shields.io/badge/Python-3.10%2B-yellow?logo=python)
+![Phases](https://img.shields.io/badge/Attack%20Phases-8-brightgreen)
+![Team](https://img.shields.io/badge/Team-Red%20Team-red)
+
+> A production-grade Active Directory penetration testing lab — covering the full red team kill chain from unauthenticated reconnaissance to domain compromise, persistence, and credential dumping. Fully mapped to MITRE ATT&CK v14 with a reproducible lab environment on `corp.local`.
 
 ---
 
-## 📌 Overview
+## Table of Contents
 
-Active Directory is the backbone of most enterprise networks. This repository covers the **end-to-end methodology** for legally testing and auditing AD environments, aligned with real-world red team operations and MITRE ATT&CK framework tactics.
-
-**Target Audience:** Cybersecurity students, SOC Analysts, Ethical Hackers, and Penetration Testers.
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Attack Phases](#attack-phases)
+- [MITRE ATT\&CK Coverage](#mitre-attck-coverage)
+- [Tools Reference](#tools-reference)
+- [Lab Setup](#lab-setup)
+- [Project Structure](#project-structure)
+- [Author](#author)
 
 ---
 
-## 🗂️ Repository Structure
+## Overview
+
+This lab replicates a realistic enterprise Active Directory environment and walks through an **end-to-end penetration testing engagement** — the same methodology used by professional red teams and OSCP/CEH practitioners.
+
+The engagement follows the **8-phase red team kill chain**:
+
+1. **Reconnaissance** — Network scanning, LDAP/DNS enumeration, username harvesting
+2. **Initial Access** — Password spraying, AS-REP Roasting, LLMNR poisoning, SMB Relay
+3. **Post-Compromise Enumeration** — BloodHound, PowerView, LDAP domain dump
+4. **Privilege Escalation** — Kerberoasting, ACL/ACE abuse, Token impersonation
+5. **Lateral Movement** — Pass-the-Hash, Pass-the-Ticket, WMI, Evil-WinRM
+6. **Persistence** — Golden Ticket, Silver Ticket, DCSync, AdminSDHolder
+7. **Credential Dumping** — LSASS, SAM/LSA, NTDS.dit, Mimikatz
+8. **Defense Evasion** — AMSI bypass, Event log clearing, LOLBins
+
+### Key Highlights
+
+| Metric | Value |
+|--------|-------|
+| Attack Phases | 8 |
+| ATT&CK Techniques Covered | 25+ |
+| Tools Demonstrated | 10+ |
+| Lab Environment | Windows Server 2019 + Kali Linux |
+| Domain | `corp.local` |
+| MITRE ATT&CK Version | v14 |
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      ATTACKER MACHINE                           │
+│             Kali Linux  ·  192.168.56.5                         │
+│   Impacket · BloodHound · CrackMapExec · Mimikatz · Kerbrute    │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │  Host-Only Network (192.168.56.0/24)
+           ┌───────────────┴───────────────┐
+           ▼                               ▼
+┌─────────────────────┐         ┌─────────────────────┐
+│   DOMAIN CONTROLLER │         │     WORKSTATION      │
+│   DC01 · 192.168.56.10│       │   WS01 · 192.168.56.20│
+│   Windows Server 2019│        │   Windows 10/11      │
+│   AD DS · DNS · LDAP │        │   Domain-Joined       │
+│   Kerberos · SMB     │        │   Simulated User      │
+└─────────────────────┘         └─────────────────────┘
+           │                               │
+           └──────────── corp.local ───────┘
+                    (AD Forest Root)
+```
+
+See [`lab-setup/`](lab-setup/) for full VM provisioning and network configuration guide.
+
+---
+
+## Attack Phases
+
+Each phase has a dedicated folder with **step-by-step commands**, **tool usage**, and a **MITRE ATT&CK mapping table**.
+
+| Phase | Folder | Key Techniques | ATT&CK IDs |
+|-------|--------|----------------|------------|
+| 1 · Reconnaissance | [`01-recon/`](01-recon/) | Nmap, LDAP enum, Kerbrute, SMB null session | T1595, T1046, T1087.002 |
+| 2 · Initial Access | [`02-initial-access/`](02-initial-access/) | Password spray, AS-REP Roasting, Responder | T1110.003, T1558.004, T1557.001 |
+| 3 · Enumeration | [`03-enumeration/`](03-enumeration/) | BloodHound, PowerView, LDAP dump | T1087.002, T1018, T1135 |
+| 4 · Privilege Escalation | [`04-privilege-escalation/`](04-privilege-escalation/) | Kerberoasting, ACL abuse, Token impersonation | T1558.003, T1548, T1484 |
+| 5 · Lateral Movement | [`05-lateral-movement/`](05-lateral-movement/) | Pass-the-Hash, Pass-the-Ticket, WMI, WinRM | T1550.002, T1550.003, T1021.006 |
+| 6 · Persistence | [`06-persistence/`](06-persistence/) | Golden Ticket, Silver Ticket, DCSync | T1558.001, T1558.002, T1003.006 |
+| 7 · Credential Dumping | [`07-credential-dumping/`](07-credential-dumping/) | LSASS, SAM, NTDS.dit, Mimikatz | T1003.001, T1003.002, T1003.003 |
+| 8 · Defense Evasion | [`08-defense-evasion/`](08-defense-evasion/) | AMSI bypass, Log clearing, LOLBins | T1562.001, T1070.001, T1218 |
+
+---
+
+## MITRE ATT&CK Coverage
+
+All techniques are mapped to the [MITRE ATT&CK Enterprise Matrix v14](https://attack.mitre.org/matrices/enterprise/). Each phase folder includes a `mitre-mapping.md` with per-technique detail.
+
+| Tactic | Techniques Covered |
+|--------|--------------------|
+| Reconnaissance | T1595, T1046 |
+| Initial Access | T1566, T1110.003 |
+| Execution | T1047, T1059.001 |
+| Persistence | T1053.005, T1547.001, T1558.001 |
+| Privilege Escalation | T1548, T1134, T1484 |
+| Defense Evasion | T1562.001, T1070.001, T1218, T1140 |
+| Credential Access | T1003.001, T1003.002, T1003.003, T1558.003, T1558.004 |
+| Discovery | T1087.002, T1018, T1135 |
+| Lateral Movement | T1550.002, T1550.003, T1021.006, T1021.002 |
+| Command & Control | T1557.001 |
+
+---
+
+## Tools Reference
+
+All tools demonstrated in this lab with installation and key usage commands in [`tools/`](tools/).
+
+| Tool | Purpose | Phase |
+|------|---------|-------|
+| [BloodHound](https://github.com/BloodHoundAD/BloodHound) | AD attack path visualization | Enumeration |
+| [Impacket](https://github.com/fortra/impacket) | Remote protocol exploitation suite | All phases |
+| [Mimikatz](https://github.com/gentilkiwi/mimikatz) | Credential extraction from memory | Credential Dumping |
+| [CrackMapExec](https://github.com/mpgn/CrackMapExec) | SMB/AD lateral movement & spraying | Initial Access, Lateral Movement |
+| [Rubeus](https://github.com/GhostPack/Rubeus) | Kerberos attack toolkit | Priv Esc, Persistence |
+| [PowerView](https://github.com/PowerShellMafia/PowerSploit) | AD enumeration via PowerShell | Enumeration |
+| [Kerbrute](https://github.com/ropnop/kerbrute) | Kerberos username/password spray | Recon, Initial Access |
+| [Evil-WinRM](https://github.com/Hackplayers/evil-winrm) | WinRM shell with PtH support | Lateral Movement |
+| [Responder](https://github.com/lgandx/Responder) | LLMNR/NBT-NS poisoning & capture | Initial Access |
+| [Nmap](https://nmap.org) | Network & port scanning | Reconnaissance |
+
+---
+
+## Lab Setup
+
+> Full provisioning guide in [`lab-setup/`](lab-setup/)
+
+### Prerequisites
+
+- **Host Machine**: 16 GB RAM minimum, 100 GB free disk
+- **Hypervisor**: VirtualBox 7.x or VMware Workstation 17.x
+- **Windows Server 2019** Evaluation ISO (free from Microsoft)
+- **Windows 10/11** Enterprise Evaluation ISO
+- **Kali Linux** 2024.x
+- **Python**: 3.10+
+
+### Quick Start
+
+```bash
+# Clone this repository
+git clone https://github.com/ChandraVerse/active-directory-penetration-test.git
+cd active-directory-penetration-test
+
+# Review lab setup guide
+cat lab-setup/README.md
+
+# Install Kali dependencies
+sudo apt install -y bloodhound neo4j impacket-scripts crackmapexec kerbrute evil-winrm
+pip3 install impacket
+
+# Provision AD users on DC01 (run on Windows Server)
+# See lab-setup/README.md Step 2 for full PowerShell script
+```
+
+### Lab Network
+
+| VM | OS | IP | Role |
+|----|----|----|------|
+| DC01 | Windows Server 2019 | 192.168.56.10 | Domain Controller, DNS |
+| WS01 | Windows 10/11 | 192.168.56.20 | Domain-joined workstation |
+| Kali | Kali Linux 2024.x | 192.168.56.5 | Attacker machine |
+
+---
+
+## Project Structure
 
 ```
 active-directory-penetration-test/
-├── 01-recon/               # Enumeration & reconnaissance techniques
-├── 02-initial-access/      # Getting initial foothold (phishing, spray, etc.)
-├── 03-enumeration/         # Post-compromise AD enumeration
-├── 04-privilege-escalation/ # Local & domain privilege escalation
-├── 05-lateral-movement/    # Pass-the-Hash, Pass-the-Ticket, etc.
-├── 06-persistence/         # Backdoors, Golden Ticket, DCSync
-├── 07-credential-dumping/  # LSASS, NTDS.dit, Kerberoasting
-├── 08-defense-evasion/     # AV bypass, log clearing
-├── 09-reporting/           # Report templates and documentation
-├── tools/                  # Scripts and tool references
-├── lab-setup/              # Lab environment setup guide
+├── 01-recon/
+│   └── README.md           # Nmap, LDAP, DNS, SMB null session, Kerbrute
+├── 02-initial-access/
+│   └── README.md           # Password spray, AS-REP, LLMNR, SMB Relay
+├── 03-enumeration/
+│   └── README.md           # BloodHound, PowerView, ldapdomaindump
+├── 04-privilege-escalation/
+│   └── README.md           # Kerberoasting, ACL abuse, token impersonation
+├── 05-lateral-movement/
+│   └── README.md           # PtH, PtT, WMI, Evil-WinRM, PSRemoting
+├── 06-persistence/
+│   └── README.md           # Golden Ticket, Silver Ticket, DCSync
+├── 07-credential-dumping/
+│   └── README.md           # LSASS, SAM, NTDS.dit extraction
+├── 08-defense-evasion/
+│   └── README.md           # AMSI bypass, log clearing, LOLBins
+├── 09-reporting/
+│   └── README.md           # Report structure, severity ratings, finding template
+├── tools/
+│   └── README.md           # All tool installation and quick-start commands
+├── lab-setup/
+│   └── README.md           # VM setup, network config, AD provisioning scripts
+├── LICENSE
 └── README.md
 ```
 
 ---
 
-## 🧪 Lab Environment
-
-| Component        | Details                          |
-|-----------------|----------------------------------|
-| Domain Controller | Windows Server 2019/2022        |
-| Workstations     | Windows 10/11 (domain-joined)   |
-| Attacker Machine | Kali Linux / Parrot OS           |
-| Virtualization   | VirtualBox / VMware Workstation  |
-| Network          | NAT / Host-Only Adapter          |
-
-See [`lab-setup/`](./lab-setup/) for full configuration guide.
-
----
-
-## ⚔️ Attack Phases Covered
-
-1. **Reconnaissance** — OSINT, DNS, LDAP enumeration
-2. **Initial Access** — Password spraying, AS-REP Roasting
-3. **Internal Enumeration** — BloodHound, PowerView, ADRecon
-4. **Privilege Escalation** — ACL abuse, Token impersonation
-5. **Lateral Movement** — PtH, PtT, WMI, PSRemoting
-6. **Persistence** — Golden Ticket, Silver Ticket, AdminSDHolder
-7. **Credential Dumping** — Mimikatz, SecretsDump, Kerberoasting
-8. **Defense Evasion** — AMSI bypass, OPSEC considerations
-
----
-
-## 🔧 Key Tools Used
-
-| Tool           | Purpose                             |
-|---------------|--------------------------------------|
-| BloodHound     | AD attack path visualization        |
-| Impacket       | Remote protocol exploitation        |
-| Mimikatz       | Credential extraction               |
-| CrackMapExec   | SMB/AD lateral movement             |
-| Rubeus         | Kerberos attacks                    |
-| PowerView      | AD enumeration via PowerShell       |
-| Kerbrute       | Kerberos username/password spray    |
-| Nmap           | Network & port scanning             |
-
----
-
-## 📋 MITRE ATT&CK Mapping
-
-All techniques are mapped to the [MITRE ATT&CK Enterprise Matrix](https://attack.mitre.org/matrices/enterprise/). Each phase folder includes a `mitre-mapping.md` file.
-
----
-
-## ⚠️ Legal Disclaimer
-
-> **This repository is strictly for educational purposes and authorized security testing only.**
-> Unauthorized access to computer systems is illegal. Always obtain explicit written permission before testing any environment. The author is not responsible for misuse.
-
----
-
-## 👤 Author
+## Author
 
 **Chandra Sekhar Chakraborty**  
-B.Tech CSE | Cybersecurity Enthusiast | SOC Analyst (Aspiring)  
+Cybersecurity Analyst | Red Team Enthusiast | SOC Analyst (Aspiring)  
 📍 West Bengal, India  
-🔗 [GitHub: ChandraVerse](https://github.com/ChandraVerse)
+🔗 [GitHub](https://github.com/ChandraVerse)
 
 ---
 
-## 📄 License
+> *"Penetration testing is not about breaking things — it's about understanding how defenders think, finding the gaps before adversaries do, and making the enterprise resilient."*
 
-MIT License — see [LICENSE](./LICENSE) for details.
+---
+
+> ⚠️ **Legal Disclaimer:** This repository is strictly for **educational purposes and authorized security testing only.** Unauthorized access to computer systems is illegal under the IT Act, 2000 (India) and equivalent laws globally. Always obtain explicit written permission before testing any environment. The author bears no responsibility for misuse.
